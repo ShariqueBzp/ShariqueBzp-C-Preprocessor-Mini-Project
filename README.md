@@ -1,241 +1,214 @@
-traction via dedicated standard headers, dynamic include-path lookup algorithms, and scalable Makefile build automation.
+# Comprehensive Technical Specification & Project Manual: `mypreprocessor`
 
-## 2. Complete File Directory & Structural Map
+## 1. Project Background & Overview
 
-```
+`mypreprocessor` is a modular, C11-compliant systems-programming utility written from scratch in standard C. It is designed to emulate the fundamental pipeline and processing mechanisms of the standard **GNU C Preprocessor (`cpp`)**. 
+
+Before a C compiler (`gcc` or `clang`) translates source code into assembly or machine code, the preprocessor transforms raw text files by stripping comments, executing conditional branching, dynamically replacing macro identifiers, and recursively replacing `#include` directives with the raw contents of header files. `mypreprocessor` provides a clean, fully customized implementation of this preprocessing pipeline.
+
+### Core Objectives
+* **Modular Codebase Architecture:** Clean separation of concerns across header definitions (`include/`), implementation modules (`src/`), system-level headers (`sysheaders/`), and test suites (`tests/`).
+* **Lexical Comment Stripping:** Neutralize single-line (`//`) and multi-line (`/* ... */`) comments via a Deterministic Finite Automaton (DFA) state machine while maintaining strict line-number parity.
+* **Recursive File Inclusion:** Intercept and expand both `#include "file.h"` and `#include <file.h>` directives, including recursive inclusion handling and custom include directory search paths (`-I`).
+* **Dynamic Macro Symbol Table Management:** Parse and manage macro definitions (`#define`) and dynamic undefinitions (`#undef`) through in-memory symbol tables.
+* **Conditional Compilation:** Evaluate conditional control blocks (`#ifdef`, `#ifndef`, `#else`, `#endif`) to dynamically include or suppress emitting code blocks.
+* **Text & Identifier Expansion:** Perform word-boundary-aware token scanning to substitute defined macro keys with their assigned expansion strings without corrupting string literals or partial variable name matches.
+* **Predefined Environment Macros:** Expand built-in preprocessor macros like `__LINE__` and `__FILE__`.
+
+---
+
+## 2. Comprehensive Directory & File Structure
+
+```text
 mypreprocessor/
-├── Makefile                         # Optimized GNU Make build configuration
-├── mypreprocessor                   # Compiled executable binary (ELF target)
-├── mypreprocessor_viva_Que.pdf      # Oral examination & technical interview question bank
+├── Makefile                         # GNU Make build script with optimized compiler flags
+├── mypreprocessor                   # Compiled executable binary target (ELF format)
+├── mypreprocessor_viva_Que.pdf      # Question bank & technical guide for oral viva defense
 │
-├── include/                         # Header files (public definitions & APIs)
-│   ├── comments.h                   # State machine interface for comment stripping
-│   ├── common.h                     # Global macros, data structures, and constants
-│   ├── expand.h                     # Text expansion and #ifdef logic evaluation engine
-│   ├── includes.h                   # Header search path management & include resolver
-│   ├── macro.h                      # Key-value symbol table interface for macro definitions
-│   ├── preprocessor.h               # Core orchestration engine and execution pipeline
-│   └── utils.h                      # Safe memory allocation and string utility headers
+├── include/                         # Header files (public interface declarations)
+│   ├── comments.h                   # DFA state machine signatures for comment stripping
+│   ├── common.h                     # Global constants, data types, and system configurations
+│   ├── expand.h                     # Text macro replacement and #ifdef evaluation interfaces
+│   ├── includes.h                   # Search path resolver and header inclusion module API
+│   ├── macro.h                      # Symbol table structures and key-value macro manager API
+│   ├── preprocessor.h               # Core execution pipeline driver & stream controller API
+│   └── utils.h                      # Memory safety wrappers and string utility headers
 │
-├── src/                             # Source modules and compiled object files
-│   ├── comments.c                   # Implements DFA comment stripper logic
-│   ├── comments.o                   # Compiled object code for comments subsystem
-│   ├── expand.c                     # Text replacement and conditional evaluation logic
-│   ├── expand.o                     # Compiled object code for text expansion
-│   ├── includes.c                   # Path search and recursive header resolution
-│   ├── includes.o                   # Compiled object code for header resolution
-│   ├── macro.c                      # Dynamic symbol table tracking (#define / #undef)
-│   ├── macro.o                      # Compiled object code for symbol table manager
-│   ├── main.c                       # Command line option parsing and CLI entry point
-│   ├── main.o                       # Compiled object code for main CLI module
-│   ├── preprocessor.c               # Master stream loop and pipeline driver
-│   ├── preprocessor.o               # Compiled object code for pipeline orchestration
-│   ├── utils.c                      # Memory checks, tokenizers, and string helper code
-│   └── utils.o                      # Compiled object code for utility functions
+├── src/                             # Source implementation modules and object files
+│   ├── comments.c                   # Implementation of lexical comment removal logic
+│   ├── comments.o                   # Compiled object module for comments processing
+│   ├── expand.c                     # Logic for text macro expansion & conditional branching
+│   ├── expand.o                     # Compiled object module for expand processing
+│   ├── includes.c                   # Implementation of include path search & recursion
+│   ├── includes.o                   # Compiled object module for includes processing
+│   ├── macro.c                      # Data structure implementation for macro symbol table
+│   ├── macro.o                      # Compiled object module for macro management
+│   ├── main.c                       # CLI argument handling, option parsing, and main entry point
+│   ├── main.o                       # Compiled object module for CLI main entry point
+│   ├── preprocessor.c               # Main line-by-line streaming & processing pipeline
+│   ├── preprocessor.o               # Compiled object module for preprocessor engine
+│   ├── utils.c                      # Utility functions: dynamic memory wrappers, string trimming
+│   └── utils.o                      # Compiled object module for utilities
 │
-├── sysheaders/                      # Built-in system header simulation folder
-│   ├── mypredef.h                   # System predefined macro signatures
-│   └── toolkit.h                    # General utility headers for internal mock testing
+├── sysheaders/                      # Standard and system header simulation directory
+│   ├── mypredef.h                   # Mock system predefined macros and guards
+│   └── toolkit.h                    # Simulated system toolkit utility header
 │
-└── tests/                           # Complete test suite, mock headers, and output targets (.i)
-    ├── acceptance.c                 # End-to-end integration test file
-    ├── acceptance.i                 # Preprocessed reference output for acceptance test
-    ├── all_points.c                 # Full directive coverage test file
-    ├── all_points.h                 # Test header for all_points execution
-    ├── all_points.i                 # Processed output of all_points.c
-    ├── demo.c                       # Basic demonstration source code
-    ├── demo.h                       # Basic demonstration header code
-    ├── full_test.c                  # Comprehensive multi-header integration test file
-    ├── full_test.i                  # Reference preprocessed output of full_test.c
-    ├── helper.h                     # Sub-header target for nested includes
-    ├── mathx.h                      # Test header for macro-based mathematical functions
-    ├── predef_test.c                # Test for built-in system macros (__LINE__, __FILE__)
-    ├── predef_test.i                # Expanded output of predef_test.c
-    ├── t1_comments.c                # Unit test for single and multi-line comments
-    ├── t1_comments.i                # Preprocessed output showing comment removal
-    ├── t2_objmacro.c                # Unit test for object-like macro definitions
-    └── t2_objmacro.i                # Preprocessed output showing expanded object macros
-
+└── tests/                           # Integrated test suite and reference output files (.i)
+    ├── acceptance.c                 # End-to-end integration test source file
+    ├── acceptance.i                 # Reference output file for acceptance.c
+    ├── all_points.c                 # Comprehensive test covering all directive features
+    ├── all_points.h                 # Supporting header for all_points.c
+    ├── all_points.i                 # Reference output file for all_points.c
+    ├── demo.c                       # Simple demonstration test source file
+    ├── demo.h                       # Supporting header for demo.c
+    ├── full_test.c                  # Advanced integration test with multi-level nested includes
+    ├── full_test.i                  # Reference output file for full_test.c
+    ├── helper.h                     # Sub-header target for nested inclusion testing
+    ├── mathx.h                      # Test header containing mathematical macro definitions
+    ├── predef_test.c                # Test targeting built-in environment macros (__LINE__, __FILE__)
+    ├── predef_test.i                # Reference output file for predef_test.c
+    ├── t1_comments.c                # Focused test for single-line and multi-line comments
+    ├── t1_comments.i                # Reference output showing comment stripping results
+    ├── t2_objmacro.c                # Focused test for object-like macro definitions
+    └── t2_objmacro.i                # Reference output showing expanded object macros
 ```
 
-## 3. Subsystem Architecture & Implementation Details
+---
 
-### 3.1. Core Orchestration Engine
+## 3. Detailed Subsystem Architecture & Implementation
 
+### 3.1. Main Execution Engine & Pipeline Orchestration
 * **Files:** `src/main.c`, `src/preprocessor.c`, `include/preprocessor.h`
-
-* **Responsibilities:**
-
-  * Parses command-line arguments using standard options (`-I` for search directories, `-o` for custom output file paths, and `-v` for verbose diagnostic tracing).
-
-  * Manages input stream opening and output target generation (`.i` extension).
-
-  * Executes the multi-stage pipeline line by line:
-    
-
-    $$
-    \text{Raw Source} \longrightarrow \text{Comment Removal} \longrightarrow \text{Directive Parsing} \longrightarrow \text{Macro Expansion} \longrightarrow \text{Output File}
-    $$
+* **Workflow:**
+  1. `main.c` parses command-line parameters (inputs, `-I` search directories, `-o` output targets, and `-v` verbose flags).
+  2. The input stream is opened, and an output file (`.i`) or `stdout` stream is prepared.
+  3. The processing loop reads the source file line by line, passing each string through sequential pipeline transformations:
+     $$\text{Raw Line} \xrightarrow{\text{Comments DFA}} \text{Comment-Free Line} \xrightarrow{\text{Directive Parser}} \text{Evaluated Line} \xrightarrow{\text{Expand Engine}} \text{Final Output Line}$$
 
 ### 3.2. Lexical Comment Stripper
-
 * **Files:** `src/comments.c`, `include/comments.h`
+* **Implementation:** Uses a **Deterministic Finite Automaton (DFA)** to inspect characters while maintaining state:
+  * `STATE_NORMAL`: Passes standard code characters directly to the output buffer.
+  * `STATE_SINGLE_COMMENT`: Activated by `//`. Discards all following characters until a newline (`\n`) is reached.
+  * `STATE_MULTI_COMMENT`: Activated by `/*`. Discards characters until `*/` is encountered.
+  * `STATE_STRING_LITERAL`: Activated inside double quotes (`"..."`). Ignores `//` or `/*` inside strings so valid text like `"http://example.com"` remains untouched.
+* **Line Number Preservation:** Replaces multi-line comment blocks with equivalent newline sequences so line count tracking remains completely intact.
 
-* **Mechanism:**
-
-  * Employs a Deterministic Finite Automaton (DFA) state machine:
-
-    * `STATE_NORMAL`: Writes characters directly to the output buffer.
-
-    * `STATE_SINGLE_COMMENT`: Triggered on `//`. Discards text until `\n` is reached.
-
-    * `STATE_MULTI_COMMENT`: Triggered on `/*`. Discards text until `*/` sequence is closed.
-
-    * `STATE_STRING_LITERAL`: Ignores comment syntax nested within double quotes (`"..."`).
-
-  * Replaces comments while preserving newlines (`\n`), ensuring line numbers in error messages stay accurate to the original input.
-
-### 3.3. Include Engine & Directory Traversal
-
+### 3.3. Include Resolver & Directory Search Engine
 * **Files:** `src/includes.c`, `include/includes.h`, `sysheaders/`
-
-* **Responsibilities:**
-
-  * Parses `#include "file.h"` (local relative lookup) and `#include <file.h>` (system search path lookup).
-
-  * Iterates dynamically over an internal list of directories supplied via `-I` command-line flags.
-
-  * Recursively opens headers and pipes content back through the preprocessor pipeline.
-
-  * Tracks an inclusion stack to prevent infinite recursion caused by circular `#include` paths.
+* **Implementation:**
+  * Handles local inclusions `#include "filename.h"` (searches current directory first, then `-I` paths).
+  * Handles system inclusions `#include <filename.h>` (searches `-I` paths and system header paths like `sysheaders/`).
+  * Manages an active inclusion stack to prevent infinite recursion or circular dependency freezes.
 
 ### 3.4. Macro Symbol Table Subsystem
-
 * **Files:** `src/macro.c`, `include/macro.h`
+* **Implementation:**
+  * Maintains an in-memory dynamic key-value symbol table storing defined macro names and their replacement bodies.
+  * Registers new entries upon encountering `#define MACRO_NAME replacement`.
+  * Purges existing entries upon encountering `#undef MACRO_NAME`.
+  * Provides key lookup functions used by both the conditional evaluator and text expansion engines.
 
-* **Data Structures & Logic:**
-
-  * Operates a dynamic key-value lookup table (dynamic list or hash-indexed linked nodes).
-
-  * Processes `#define MACRO_NAME replacement_value` to register new entries.
-
-  * Processes `#undef MACRO_NAME` to erase entries from the symbol table.
-
-  * Stores both object-like macros (`#define MAX_BUFFER 1024`) and provides foundational support for function-like macro patterns.
-
-### 3.5. Text Expansion & Conditional Compilation Engine
-
+### 3.5. Expansion Engine & Conditional Compilation
 * **Files:** `src/expand.c`, `include/expand.h`
+* **Implementation:**
+  * Evaluates block directives: `#ifdef MACRO`, `#ifndef MACRO`, `#else`, and `#endif`.
+  * Uses a stack-based conditional state machine to suppress or allow line output based on current block condition truth values.
+  * Scans active code lines for identifier tokens matching symbol table keys, substituting them with their expanded values while respecting word boundaries.
 
-* **Responsibilities:**
-
-  * Evaluates conditional control block directives: `#ifdef`, `#ifndef`, `#else`, and `#endif`.
-
-  * Maintains an internal stack of boolean flags representing conditional output states. When a branch evaluates to false, emission to the output stream is suspended.
-
-  * Performs tokenization on active lines, checking tokens against the symbol table and expanding matching identifiers with their stored value.
-
-### 3.6. Utility Subsystem
-
+### 3.6. Utility Helpers & Memory Safety
 * **Files:** `src/utils.c`, `include/utils.h`, `include/common.h`
+* **Implementation:**
+  * Wraps memory allocations (`malloc`, `calloc`, `realloc`) to ensure strict check-on-allocation hygiene and prevent crashes or memory leaks.
+  * Provides helper routines for string trimming, token boundary identification, and path formatting.
 
-* **Responsibilities:**
+---
 
-  * Encapsulates system allocation calls (`malloc`, `realloc`, `calloc`) with built-in null-pointer checks to prevent memory exhaustion crashes.
+## 4. Build Directives & Compilation
 
-  * Performs string normalization, leading/trailing whitespace trimming, string concatenation, and token boundary verification.
+The project uses GNU Make for compilation.
 
-## 4. Build System & Compilation Directives
+### Compiler Configuration
+* **Compiler Flags (`CFLAGS`):** `-Wall -Wextra -O2 -std=c11 -Iinclude`
+  * `-Wall -Wextra`: Enables full warning diagnostics.
+  * `-O2`: Enables level 2 code optimization.
+  * `-std=c11`: Compiles under the ISO C11 language specification standard.
+  * `-Iinclude`: Automatically adds the project header directory to the include path.
 
-### 4.1. Makefile Rules
+### Key Make Commands
+```bash
+# Build the project executable (mypreprocessor)
+make
 
-The provided `Makefile` manages incremental compilation using the GNU C Compiler (`gcc`):
+# Clean up all object files (*.o), preprocessed outputs (*.i), and binary files
+make clean
 
-* **Default Compiler Flags:**
-
-  ```
-  CFLAGS = -Wall -Wextra -O2 -std=c11 -Iinclude
-  
-  ```
-
-  * `-Wall -Wextra`: Enforces strict compile-time warning diagnostics.
-
-  * `-O2`: Applies level-2 code optimizations.
-
-  * `-std=c11`: Targets the ISO/IEC 9899:2011 C standard.
-
-  * `-Iinclude`: Automatically points header paths to the `include/` directory.
-
-* **Primary Make Targets:**
-
-  * `make` / `make all`: Compiles source dependencies under `src/` into object files (`.o`) and links them into the `./mypreprocessor` executable binary.
-
-  * `make clean`: Removes binary executables, object files (`*.o`), and generated output targets (`*.i`).
-
-  * `make test`: Executes automated preprocessor testing across inputs in `tests/`.
-
-## 5. Usage & CLI Manual
-
-### 5.1. Command Syntax
-
+# Run standard test executions against test suite inputs
+make test
 ```
+
+---
+
+## 5. Command-Line Interface (CLI) Manual
+
+### Command Syntax
+```bash
 ./mypreprocessor <input.c> [-I<dir>]... [-o output.i] [-v]
-
 ```
 
-### 5.2. Options & Parameters
+### Argument Matrix
+| Flag / Option | Type | Description |
+| :--- | :--- | :--- |
+| `<input.c>` | Parameter | **Required.** Target C source file to be preprocessed. |
+| `-I<dir>` | Option | **Optional.** Adds a directory to the header include search path. Can be passed multiple times. |
+| `-o output.i` | Option | **Optional.** Sets custom output path for preprocessed code. Defaults to `stdout` if omitted. |
+| `-v` | Flag | **Optional.** Enables verbose logging, printing execution tracing and diagnostics. |
 
-| Option / Parameter | Type | Description | 
-| ----- | ----- | ----- | 
-| `<input.c>` | Required | Path to the target C source code file to preprocess. | 
-| `-I<dir>` | Optional | Add directory `<dir>` to the include file search path (can be used multiple times). | 
-| `-o output.i` | Optional | Specifies the path for the preprocessed output file. Defaults to `stdout` if omitted. | 
-| `-v` | Optional | Activates verbose execution mode, outputting debug steps to `stdout`. | 
+### Usage Examples
+```bash
+# Process a simple demonstration file to stdout
+./mypreprocessor tests/demo.c
 
-### 5.3. Example Usage
+# Preprocess a file and output the results directly to an output file (.i)
+./mypreprocessor tests/all_points.c -o tests/all_points.i
 
-```
-# Basic run generating demo output
-./mypreprocessor tests/demo.c -o tests/demo.i
-
-# Preprocessing with custom include paths and verbose debugging
+# Preprocess with multiple custom search directories and verbose debug output
 ./mypreprocessor tests/full_test.c -I./sysheaders -I./tests -o tests/full_test.i -v
-
 ```
 
-## 6. Test Suite Matrix
+---
 
-The `tests/` directory contains tests designed to validate individual sub-components and overall system integration:
+## 6. Detailed Test Suite Matrix
 
-| Test File | Primary Objective | Description | Expected Output Target | 
-| ----- | ----- | ----- | ----- | 
-| `t1_comments.c` | Comment Engine | Validates removal of both `//` and `/* ... */` comment formats without disrupting line numbering. | `t1_comments.i` | 
-| `t2_objmacro.c` | Macro Engine | Validates registration, lookup, and text substitution of `#define` macros. | `t2_objmacro.i` | 
-| `predef_test.c` | Environment Directives | Verifies expansion of predefined system identifiers (`__LINE__`, `__FILE__`). | `predef_test.i` | 
-| `all_points.c` | Directive Parser | Tests complete conditional workflow (`#ifdef`, `#ifndef`, `#else`, `#undef`, `#endif`). | `all_points.i` | 
-| `acceptance.c` | Integration Verification | Full pipeline test combining comments, inclusions, macro expansion, and conditionals. | `acceptance.i` | 
-| `full_test.c` | Stress & Recursion | Complex test executing multi-level nested headers (`helper.h`, `mathx.h`). | `full_test.i` | 
+The `tests/` directory contains tests for validating subsystem features:
 
-## 7. Viva & Oral Defense Preparation Guide (`mypreprocessor_viva_Que.pdf`)
+| Test Input File | Primary Objective | Key Features Validated | Expected Output File |
+| :--- | :--- | :--- | :--- |
+| `t1_comments.c` | Comment Removal | Single-line `//` and multi-line `/* ... */` comment stripping, string literal protection. | `t1_comments.i` |
+| `t2_objmacro.c` | Macro Replacement | `#define` object macro registration and text token substitution. | `t2_objmacro.i` |
+| `predef_test.c` | Built-in Environment | Expansion of predefined preprocessor macros like `__LINE__` and `__FILE__`. | `predef_test.i` |
+| `all_points.c` | Full Directives | Full suite of `#ifdef`, `#ifndef`, `#else`, `#undef`, and `#endif` conditional logic. | `all_points.i` |
+| `acceptance.c` | End-to-End Pipeline | Full processing pipeline combining comment removal, includes, and macros. | `acceptance.i` |
+| `full_test.c` | Nested Integration | Complex multi-level include resolution via `helper.h` and `mathx.h`. | `full_test.i` |
 
-The root repository includes `mypreprocessor_viva_Que.pdf`, a reference document for academic project vivas or technical architecture reviews. Key topics covered include:
+---
 
-1. **Tokenization vs. String Replacement:** Why simple string substitution (`strstr`) fails without token boundary checks (e.g., preventing macro `CAT` from modifying variable `CATERPILLAR`).
+## 7. Viva & Oral Exam Defense Preparation (`mypreprocessor_viva_Que.pdf`)
 
-2. **State Machine Design:** Managing edge cases during comment stripping, such as comment markers enclosed in string literals (`char *s = "/* not a comment */"`).
+The included PDF file `mypreprocessor_viva_Que.pdf` serves as a study guide for viva examinations and technical reviews.
 
-3. **Data Structure Trade-Offs:** Comparing dynamic linked lists ($O(N)$ lookup) to Hash Tables ($O(1)$ average lookup) for symbol table management.
+### Top Viva Concepts & Answers
+1. **Why is simple `strstr` insufficient for macro expansion?**
+   * *Answer:* Simple string substitution replaces substrings inside larger tokens (e.g., replacing `CAT` inside `CATERPILLAR` to produce `DOGERPILLAR`). `mypreprocessor` uses proper tokenization to respect word boundaries.
+2. **How are comment markers inside strings handled?**
+   * *Answer:* The DFA state machine tracks `STATE_STRING_LITERAL` upon encountering double quotes (`"`). While in this state, comment tokens (`//`, `/*`) are treated as literal character sequences rather than comment triggers.
+3. **How does the inclusion engine prevent circular include crashes?**
+   * *Answer:* An internal stack tracks active inclusion paths. If a header attempts to include a file already present on the active stack, an error or guard condition stops execution to prevent infinite recursion.
+4. **What dynamic data structure is used for macro tracking?**
+   * *Answer:* An in-memory dynamic symbol table (using linked list nodes or hash-indexed buckets) allows $O(1)$ to $O(N)$ lookup, addition, and removal of key-value replacement pairs.
 
-4. **Recursive File Inclusion:** Preventing infinite loops with circular includes using path-tracking stacks.
-
-5. **Memory Safety:** Preventing memory leaks during string reallocation when expanding short macro names into longer values.
+---
 
 ## 8. License
-
-Distributed under the **MIT License**. Refer to the repository root or standard open-source guidelines for permissions and terms.# Comprehensive Technical Specification & Documentation: `mypreprocessor`
-
-## 1. Executive Overview
-
-`mypreprocessor` is a lightweight, modular, C11-compliant systems utility written in standard C from scratch to replicate core features of the standard GNU C Preprocessor (`cpp`). The tool processes standard C source code prior to compilation by executing lexical transformations, recursive file inclusions, conditional block evaluations, comment stripping via deterministic finite automata, and dynamic macro symbol-table tracking.
-
-Designed with modular systems architecture in mind, the codebase adheres to strict standards of memory hygiene, clean interface abs
+This project is open-source software provided under the **MIT License**.
